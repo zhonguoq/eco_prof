@@ -1,0 +1,204 @@
+{
+  "main": {
+    "id": "e4d026b12cffb200",
+    "type": "split",
+    "children": [
+      {
+        "id": "bbcf19e0ffe45090",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "306007aa49bdc7ba",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "analyses/债务周期阶段判断框架.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "债务周期阶段判断框架"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "f83e050bc2fb38c8",
+    "type": "split",
+    "children": [
+      {
+        "id": "37467b22aaae3be1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "d35212235f06c319",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "bba459dafa872c2a",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "9f4bbe6c2579066d",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "4c65ec35764e4608",
+    "type": "split",
+    "children": [
+      {
+        "id": "5aed02768e933d62",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "7de093bcc20026e8",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "反向链接"
+            }
+          },
+          {
+            "id": "e638ec36f7af5e68",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "出链"
+            }
+          },
+          {
+            "id": "e5e9d46ca0570605",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "659f1dd2c8dbb396",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "4b40696c16d4bdcd",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "306007aa49bdc7ba",
+  "lastOpenFiles": [
+    "analyses/宏观环境判断与投资指引框架.md",
+    "index.md",
+    "log.md",
+    "analyses/债务周期阶段判断框架.md",
+    "analyses/债务周期的内在逻辑-从生产率到泡沫.md",
+    "sources/dalio-changing-world-order-2020.md",
+    "concepts/内部秩序周期-internal-order-cycle.md",
+    "concepts/帝国兴衰决定因素-determinants-of-empire-power.md",
+    "sources/dalio-big-debt-crises-2018.md",
+    "concepts/储备货币周期-reserve-currency-cycle.md",
+    "concepts/世界秩序大周期-big-cycle-of-world-order.md",
+    "concepts/美丽去杠杆化-beautiful-deleveraging.md",
+    "concepts/通胀型萧条-inflationary-depression.md",
+    "concepts/收益率曲线-yield-curve.md",
+    "sources/lab-dashboard-architecture.md",
+    "thinkers/ray-dalio.md",
+    "concepts/通缩型萧条-deflationary-depression.md",
+    "concepts/大债务周期-big-debt-cycle.md"
+  ]
+}

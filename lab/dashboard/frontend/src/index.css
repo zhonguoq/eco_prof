@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+body {
+  margin: 0;
+  background: #030712;
+  color: #f9fafb;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 14px;
+}
+
+#root { min-height: 100vh; }
