@@ -148,3 +148,8 @@ cd lab/dashboard/frontend && npm run dev
 - `concepts/收益率曲线-yield-curve.md` — 完整概念页：定义、五种曲线形态、两大关键利差（10Y-2Y / 10Y-3M）、三大理论机制（预期理论、流动性溢价、银行信贷传导）、美国历史衰退记录、与大债务周期各阶段的对应关系、局限性与注意事项
 
 **更新：** `wiki/index.md`（统计：2来源，10页面）
+
+## [2026-04-19 19:35] eco-prof | daily-brief | 美国宏观出现典型三层背离：债务周期 5 信号全绿但增长-通胀 regime 已进入 Stagflation
+- 归档: lab/reports/2026-04-19_eco-brief.md
+- regime: Stagflation · debt_stage: 早期健康 / 正常化
+- alerts: yes (soft) — 三层背离 + UMCSENT 56.6 danger + 总债务/GDP 342.5% 逼近 350%

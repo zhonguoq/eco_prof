@@ -4,21 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "bbcf19e0ffe45090",
+        "id": "a97ea8cdb179ae66",
         "type": "tabs",
         "children": [
           {
-            "id": "306007aa49bdc7ba",
+            "id": "b5742c1da7dbcf80",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "analyses/债务周期阶段判断框架.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "债务周期阶段判断框架"
+              "title": "新标签页"
             }
           }
         ]
@@ -180,12 +176,12 @@
       "bases:新建数据库": false
     }
   },
-  "active": "306007aa49bdc7ba",
+  "active": "b5742c1da7dbcf80",
   "lastOpenFiles": [
+    "analyses/债务周期阶段判断框架.md",
     "analyses/宏观环境判断与投资指引框架.md",
     "index.md",
     "log.md",
-    "analyses/债务周期阶段判断框架.md",
     "analyses/债务周期的内在逻辑-从生产率到泡沫.md",
     "sources/dalio-changing-world-order-2020.md",
     "concepts/内部秩序周期-internal-order-cycle.md",

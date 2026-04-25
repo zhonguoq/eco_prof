@@ -1,200 +1,55 @@
-# Wiki Schema — Personal Economics Knowledge Base
+# eco_prof Agent Schema
 
-This document defines the structure conventions, workflows, and LLM behavioral rules for this project.
-**The LLM MUST follow this schema** and help update it as conventions evolve.
-
----
-
-## Directory Structure
-
-```
-eco_knowladge_base/
-├── raw/                    # Source documents (read-only, LLM never modifies)
-│   ├── assets/             # Images, PDFs, attachments
-│   └── *.md / *.pdf / ...  # Raw source files
-├── wiki/                   # LLM-maintained knowledge base (the "financial brain")
-│   ├── index.md            # Global index (updated after every ingest)
-│   ├── log.md              # Operation log (append-only)
-│   ├── concepts/           # Economic concepts, theories, models
-│   ├── thinkers/           # Economist profile pages
-│   ├── schools/            # School of thought overviews
-│   ├── sources/            # Summary page for each source document
-│   └── analyses/           # Cross-source analyses, comparisons, syntheses
-├── lab/                    # Lab: tools, data, reports (the practice layer)
-│   ├── tools/              # Data-fetching scripts and analysis tools
-│   ├── data/               # Fetched raw data (csv/json — exclude from git or manage separately)
-│   └── reports/            # Analysis snapshots (valuable conclusions may be archived to wiki/analyses/)
-├── CLAUDE.md               # LLM Wiki pattern document + project bootstrap instructions
-└── SCHEMA.md               # This file: concrete schema conventions
-```
+本仓库根层契约：描述 eco_prof agent、其 skill 层、与 lab/knowledge 子系统的交互规则。知识库内部的页模板等在 `knowledge/SCHEMA.md`；lab 的命名与脚本规范在 `lab/CLAUDE.md`。
 
 ---
 
-## Page Format
+## eco_prof Agent — 设计原则与演进路径
 
-All wiki pages use YAML frontmatter:
+自 2026-04 起本项目引入常驻私人宏观投资顾问 agent：`eco_prof`。定义在 `.claude/agents/eco-prof.md`，由 `/eco-brief`（定时简报）与 `/eco-chat`（对话讨论）两个入口唤起，也可被 `/schedule` 远程触发器定时调用。
 
-```yaml
----
-title: Page title
-type: concept | thinker | school | source | analysis
-tags: [macroeconomics, monetary-policy, ...]
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-sources: [source-filename, ...]   # raw sources that support this page
----
-```
+### 分层与稳定性
 
-### Content structure by page type
+| 层 | 位置 | 稳定性 | 说明 |
+|---|---|---|---|
+| 主 agent（壳） | `.claude/agents/eco-prof.md` | **稳定**——未来 multi-agent 化时是根 | 只写人设、原则、编排范式；**不**出现具体指标/数据源/文件路径 |
+| 技能（可演进） | `.claude/skills/*/SKILL.md` | 契约稳定，内部实现可变 | `knowledge-query` / `lab-diagnose` / `news-scan` / `eco-brief` |
+| 实现细节（变动频繁） | `lab/tools/*.py`、`lab/dashboard/backend/*.py`、`knowledge/wiki/**` | 自由演进 | lab 加信号、knowledge 加框架，都不影响上两层 |
 
-**concept**
-- Definition (Chinese + English)
-- Core mechanism
-- Related concepts (internal links)
-- Representative thinkers (internal links)
-- School affiliation (internal links)
-- Source citations
+**三条不变量**：
+1. 主 agent prompt 不硬编码具体指标名（T10Y2Y）、数据源（FRED、Reuters）、文件路径（regime.py）。
+2. Skill frontmatter 中的输入输出契约视为对主 agent 的公共 API；改契约要 bump 版本 + 在 `knowledge/wiki/log.md` 记录（前缀 `skill-contract-change | <skill-name>`）。
+3. 思考框架由 `knowledge-query` skill 动态读入 `knowledge/wiki/`，wiki 改动主 agent 自动吃到最新，不把框架复制粘贴到 prompt。
 
-**thinker**
-- Bio (birth/death years, nationality, school)
-- Core contributions
-- Major works
-- Key concepts (internal links)
-- Controversies and criticisms
-- Source citations
+### 产出与日志命名
 
-**school**
-- Origins and background
-- Core claims
-- Representative figures (internal links)
-- Key concepts (internal links)
-- Disagreements with other schools
-- Source citations
+- **每日简报**：`lab/reports/YYYY-MM-DD_eco-brief.md`
+- **专题简报**：`lab/reports/YYYY-MM-DD_eco-brief-<focus-slug>.md`
+- **（未来）小时扫描**：`lab/reports/YYYY-MM-DD-HHMM_eco-scan.md`
+- **新闻存储**：`lab/news/YYYY-MM-DD.jsonl`（UTC 日期，`fetch_news.py` 幂等写入）
+- **log 前缀**（追加到 `knowledge/wiki/log.md`）：
+  - `eco-prof | daily-brief | <tl;dr 首句>`
+  - `eco-prof | topic | <focus>`
+  - `eco-prof | alert | <触发项>`
+  - `eco-prof | scan | <关键变化>`（v0.3+）
+  - `skill-contract-change | <skill> | v0.X → v0.Y`
 
-**source**
-- Metadata (author, year, type)
-- Core arguments (3–7 bullets)
-- Key concepts (internal links)
-- Relation to existing wiki content: what it supports or challenges
-- Questions worth exploring further
+### 与 lab/dashboard 的关系
 
-**analysis**
-- Problem / goal
-- Method
-- Key findings
-- Conclusions
-- Wiki pages cited
+lab/dashboard 的 APScheduler（每日 06:00 UTC 刷 FRED）**保持不动**，与 eco_prof **并行运行**：前者负责"数据新鲜"，后者负责"基于数据做综合分析"。eco_prof 的 `lab-diagnose` skill 只在需要时补刷数据，不代替 scheduler。
 
----
+### 历史路径兼容
 
-## Internal Link Conventions
+`lab/reports/2026-04-*.md` 等早期产出里引用的 `wiki/analyses/...` / `wiki/concepts/...` 等价于现路径 `knowledge/wiki/analyses/...` / `knowledge/wiki/concepts/...`。新产出必须用 `knowledge/wiki/...`。
 
-Use standard Markdown link format: `[Page Title](../concepts/page.md)`.
-Prefer relative paths for compatibility with both Obsidian and standard Markdown renderers.
+### 演进路径
 
----
+- **v0.1**（2026-04）：单主 agent + 4 个 skill。MVP 目标：跑通"定时 → 拉数+拉新闻 → 框架诊断 → 简报归档"闭环。
+- **v0.1.1**（当前）：目录重构（根=eco_prof，knowledge/ 与 lab/ 并列）；skill heredoc 实化为 `lab/tools/` 脚本；`wiki-query` → `knowledge-query`；news_sources 清洗 + 中文源；`fetch_news` 加 `max_age_hours`。
+- **v0.2**：multi-agent 化。`knowledge-query` skill 升级为 `knowledge-expert` subagent；新增 `macro-analyst`、`geopolitics-analyst`、`portfolio-strategist` subagent。主 eco-prof 收敛为纯 orchestrator。
+- **v0.3**：告警与小时扫描。加 `/eco-scan` + 小时级 `/schedule`；新 skill `alert-check`。
+- **v0.4**：Portfolio 只读接入。新 skill `portfolio-read`（券商 API）+ subagent `portfolio-strategist`。
+- **v0.5**：`wiki-lint` 周任务。
+- **v1.0**：白名单 + 人工 confirm 下的半自动 ETF 调仓。
 
-## Workflows
-
-### Ingest (processing a new source)
-
-1. Read the new source file from `raw/`
-2. Discuss key takeaways with the user (optional)
-3. Create a source summary page in `wiki/sources/`
-4. Update or create related pages in `concepts/`, `thinkers/`, `schools/`
-5. Add an index entry to `wiki/index.md` and update counts
-6. Append a log entry to `wiki/log.md`
-
-### Query
-
-1. Read `wiki/index.md` to identify relevant pages
-2. Read those pages and synthesize an answer
-3. If the answer has standalone value, propose saving it as a page in `analyses/`
-
-### Lint (health check)
-
-Check for:
-- Concepts referenced by internal links but lacking their own page (dangling links)
-- Orphan pages with no inbound links
-- Contradictory claims across pages
-- Concepts cited by ≥ 2 sources but still lacking a dedicated page
-- Web search directions that could fill data gaps
-
----
-
-## Lab Rules
-
-### Separation of concerns
-
-`lab/` is where theory meets practice. It is strictly separate from `wiki/`:
-
-| | wiki (brain) | lab (practice) |
-|---|---|---|
-| Content | Knowledge, frameworks, principles | Programs, data, reports |
-| Longevity | Long-lived | Time-sensitive, changes with markets |
-| Author | LLM, guided by user thinking | Scripts + LLM collaborative analysis |
-| Change rate | Slow, deliberate | Fast, follows market data |
-
-### One-way reference principle
-
-```
-wiki (theory) ──referenced by──→ lab/tools (implements framework indicators)
-                                        ↓ produces data and reports
-                                 lab/reports/
-                                        ↓ archive highlights (user confirms)
-                                 wiki/analyses/ (permanent knowledge)
-```
-
-- `lab/tools/` scripts **reference** wiki frameworks but never modify the wiki
-- `lab/data/` holds raw fetched data — intermediate artifacts
-- `lab/reports/` holds analysis snapshots; when a report yields a **permanently valuable conclusion**, the LLM proposes archiving it to `wiki/analyses/`
-
-### Lab file naming conventions
-
-- Tool scripts: `tools/<description>.py` — e.g. `fetch_us_indicators.py`
-- Data files: `data/<source>_<indicator>_<date>.csv` — e.g. `fred_yield_curve_20260412.csv`
-- Report files: `reports/<YYYY-MM-DD>_<topic>.md` — e.g. `2026-04-12_us-debt-cycle-diagnosis.md`
-
-### Lab workflows
-
-**Fetch**
-1. Run the relevant script in `lab/tools/`
-2. Save output to `lab/data/`
-3. Append a data-update entry to `wiki/log.md`
-
-**Analyze**
-1. LLM reads the latest files in `lab/data/`
-2. Cross-references against relevant framework pages in `wiki/analyses/`
-3. Writes diagnostic conclusions to `lab/reports/`
-4. If conclusions have long-term value, proposes archiving to `wiki/analyses/`
-
-**Alert**
-- When a key indicator hits a danger threshold defined in the wiki framework, the LLM proactively flags it
-- Alert records are appended to `wiki/log.md`
-
----
-
-## Language Conventions
-
-- **Instruction files** (CLAUDE.md, SCHEMA.md): English
-- **Wiki page titles**: bilingual — `中文名 (English Name)`, e.g. `边际效用 (Marginal Utility)`
-- **Thinker and school titles**: English primary, Chinese translation in parentheses
-- **Wiki body text**: Chinese primary, with English technical terms on first use
-- **Source summary pages**: match the language of the original source
-
----
-
-## Economics Taxonomy (for tagging)
-
-Main domains covered in this wiki:
-
-- Microeconomics / Macroeconomics
-- Monetary Economics / Fiscal Policy
-- Behavioral Economics
-- Development Economics
-- International Economics / Trade Theory
-- Political Economy
-- Game Theory
-- Information Economics
-- Institutional Economics
-- History of Economic Thought
+**演进原则**：先加 skill，后拆 subagent；skill 契约改动优先 bump 版本，不悄悄破坏。
