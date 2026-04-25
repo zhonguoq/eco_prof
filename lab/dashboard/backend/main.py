@@ -75,6 +75,10 @@ SERIES_META = {
     # Early-warning
     "BAMLH0A0HYM2":  {"name": "HY Credit Spread (OAS)",               "group": 4, "unit": "%"},
     "DRCCLACBS":     {"name": "Credit Card Delinquency Rate",          "group": 4, "unit": "%"},
+    # Group 6 — Asset-Inflation Divergence (P005)
+    "SP500":                     {"name": "S&P 500 Index",                              "group": 6, "unit": "index"},
+    "SP500_YOY":                 {"name": "S&P 500 YoY Change",                         "group": 6, "unit": "%"},
+    "ASSET_INFLATION_DIVERGENCE":{"name": "Asset Inflation Divergence (SP500 - CPI)",    "group": 6, "unit": "%"},
 }
 
 

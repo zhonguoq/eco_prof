@@ -19,6 +19,10 @@ _经济学理论、模型、机制_
 | [帝国兴衰决定因素 (Determinants of Empire Power)](./concepts/帝国兴衰决定因素-determinants-of-empire-power.md) | 八大国力指标及其滞后顺序；储备货币地位最后丧失 | 帝国兴衰, 国力评估, 宏观历史 |
 | [储备货币周期 (Reserve Currency Cycle)](./concepts/储备货币周期-reserve-currency-cycle.md) | 货币从获得储备地位到因过度举债而丧失地位的完整机制 | 储备货币, 货币体系, 国际金融 |
 | [内部秩序周期 (Internal Order Cycle)](./concepts/内部秩序周期-internal-order-cycle.md) | 财富差距→民粹→财政货币化→革命的政治经济周期 | 政治经济学, 财富不平等, 民粹主义 |
+| [中国债务周期 (China Debt Cycle)](./concepts/中国债务周期-china-debt-cycle.md) | 以国有银行+房地产+LGFV为核心载体的独特债务周期 | 中国, 债务周期, 房地产 |
+| [A 股市场特征 (A-Share Market)](./concepts/A股市场特征-ashare-market-characteristics.md) | 散户主导、政策敏感、高波动；独立于美股的特征框架 | 中国, 股票市场, 行为金融 |
+| [中美周期联动 (China-US Cycle Linkage)](./concepts/中美周期联动-china-us-cycle-linkage.md) | 全球前两大经济体的四种周期传导通道与当前异步相位 | 中美关系, 全球宏观 |
+
 
 ---
 
@@ -64,10 +68,27 @@ _跨来源的比较、综合、专题分析_
 
 ---
 
+## 原则 (Principles)
+
+_可操作的投资/分析判断规则_
+
+| ID | 标题 | 置信度 | 已编码 | 状态 |
+|----|------|--------|--------|------|
+| [P001](principles/P001-yield-curve-inversion-signal.md) | 收益率曲线倒挂是衰退的可靠领先信号 | high | ✅ | active |
+| [P002](principles/P002-nominal-growth-vs-rate.md) | 名义增速 > 名义利率则债务负担减轻 | high | ✅ | active |
+| [P003](principles/P003-debt-gdp-thresholds.md) | 总债务/GDP 超 300%/350% 触发长期风险警戒 | high | ✅ | active |
+| [P004](principles/P004-regime-asset-allocation.md) | 增长-通胀四象限决定资产配置倾向 | high | ✅ | active |
+| [P005](principles/P005-bubble-inflation-divergence.md) | 泡沫期资产通胀与商品通胀分离 | high | ✅ | active |
+| [P006](principles/P006-yield-curve-shape-phase-map.md) | 收益率曲线六形态对应不同债务周期阶段 | medium | ✅ | active |
+| [P007](principles/P007-rate-level-direction-phase.md) | 利率水平与方向共同决定货币政策阶段 | medium | ✅ | active |
+
+---
+
 ## 统计
 
 | 项目 | 数量 |
 |------|------|
 | 已处理来源 | 3 |
-| Wiki 页面总数 | 16 |
-| 最后更新 | 2026-04-19 |
+| Wiki 页面总数 | 19 |
+| 原则卡片 | 7 |
+| 最后更新 | 2026-04-25 |

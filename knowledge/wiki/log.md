@@ -153,3 +153,150 @@ cd lab/dashboard/frontend && npm run dev
 - 归档: lab/reports/2026-04-19_eco-brief.md
 - regime: Stagflation · debt_stage: 早期健康 / 正常化
 - alerts: yes (soft) — 三层背离 + UMCSENT 56.6 danger + 总债务/GDP 342.5% 逼近 350%
+
+## [2026-04-25 13:03] eco-prof | daily-brief | 美国宏观三层背离持续：债务周期 5 信号全绿但增长-通胀 regime 处 Stagflation
+- 归档: lab/reports/2026-04-25_eco-brief.md
+- regime: Stagflation · debt_stage: 早期健康 / 正常化
+- alerts: yes — UMCSENT 53.3 danger + 伊朗战争能源冲击 + 总债务/GDP 342.5%
+
+## [2026-04-25 14:19] eco-prof | phase-1 | 重建 Agent 团队基础设施完成
+- 新建: `CLAUDE.md`（root）— 项目说明书
+- 新建: `.claude/agents/eco-prof.md` — 主编排 Agent 定义
+- 新建: `.claude/skills/wiki-query/SKILL.md` — 知识库查询
+- 新建: `.claude/skills/lab-diagnose/SKILL.md` — 宏观诊断
+- 新建: `.claude/skills/news-scan/SKILL.md` — 新闻扫描
+- 新建: `.claude/skills/eco-brief/SKILL.md` — 每日简报生成
+- 新建: `.claude/commands/eco-brief.md` — `/eco-brief` 命令
+- 新建: `.claude/commands/eco-chat.md` — `/eco-chat` 命令
+- 背景: 8 个文件覆盖 4 个 Agent 角色；CLAUDE.md 采用"项目说明书"策略避免编码污染
+- 下一步: Phase 2 — 原则提取与编码
+
+## [2026-04-25 14:30] eco-prof | phase-2 | 完成首批 5 条原则提取 + P005 指标编码
+- 新建: `.claude/skills/wiki-extract/SKILL.md` — 原则提取工作流
+- 新建: `knowledge/wiki/principles/` + P001-P005 原则卡片（全部确认 active）
+- 新建: `knowledge/wiki/principles/index.md` — 原则索引
+- 编码: P005 资产通胀背离指标 — SP500 拉取 + 衍生计算 + regime 诊断信号
+  - `fetch_us_indicators.py`: 新增 SP500 系列、SP500_YOY、ASSET_INFLATION_DIVERGENCE 衍生计算
+  - `regime.py`: 新增资产通胀背离 aux_signal（>10% warning, >20% danger）
+  - `main.py`: 新增 SERIES_META 元数据
+- P005 阈值: divergence > 10% → warning, > 20% → danger
+
+## [2026-04-25 15:00] eco-prof | phase-2.2 | 编码 B4 + A6 原则，新增 P006/P007 卡片
+- 新建: `.claude/skills/lab-model/SKILL.md` — 原则编码工作流
+- 编码 B4: `regime.py:classify_yield_curve_shape()` — 六形态分类器（正常/趋平/倒挂/牛陡/超平/恢复）
+- 编码 A6: `regime.py:classify_rate_phase()` — 利率水平+方向 9 状态分类器
+- 新增 P006: 收益率曲线六形态映射债务周期阶段（medium confidence）
+- 新增 P007: 利率水平+方向决定货币政策阶段（medium confidence）
+- 建立双向追溯: 每条原则 card 标记 encoded_in，代码中标注原则 ID
+- 原则总计: 7 条（全部 active + 全部已编码）
+
+## [2026-04-25 15:20] eco-prof | phase-2.3 | 完成原则回测验证闭环
+
+## [2026-04-25 21:00] eco-prof | phase-3.1 | 完成新闻深度分析系统
+
+新闻告警引擎上线：
+- 新建 `lab/tools/run_alerts.py` — 原则驱动告警引擎（12 条硬信号规则 + 7 条软信号规则）
+- 新建 `lab/data/alerts.jsonl` — 告警历史存储
+- 新建 `.claude/skills/event-brief/SKILL.md` — P1 告警触发时自动生成专题简报
+- 更新 `.claude/skills/news-scan/SKILL.md` — 加入原则关联 + 告警引擎调用 + 结构化输出格式
+- 更新 `.claude/skills/eco-brief/SKILL.md` — Step 4 替换为告警引擎调用，简报模板加入结构化告警区块
+- 更新 `.claude/agents/eco-prof.md` — 新增 news-alert/event-brief 技能路由 + 自主唤醒序列
+
+当前告警（2026-04-25）：
+- 🔴 P1: ALERT-WAR（地缘冲突—伊朗战争）+ ALERT-FED（央行相关新闻关键词）
+- 🟡 P2: ALERT-DEBT2（债务/GDP 342.5%警戒）+ ALERT-STAG（Stagflation持续）+ ALERT-SENTIMENT（UMCSENT 53.3）+ ALERT-CPI/ALERT-RESERVE/ALERT-SHADOW（新闻关键词）
+
+首次 event-brief 输出：`lab/reports/2026-04-25_brief-iran-war-geopolitical-risk.md`
+
+## [2026-04-25 21:30] eco-prof | phase-3.2 | 创建投资建议引擎
+
+- 新建 `.claude/skills/eco-advise/SKILL.md` — 结构化资产配置建议引擎
+  - 基准配置：基于 regime.py 四象限 ASSET_TILTS
+  - 告警调整因子：P1 ±1, P2 ±0.5，支持叠加
+  - 三时间框架：短期(1-3m) / 中期(3-12m) / 长期(1-3y)
+  - 置信度评分：基于信号一致性/数据时效/框架覆盖/历史对标四因素
+  - 输出：人类可读报告 + 结构化 JSON
+- 首次建议输出：`lab/reports/2026-04-25_eco-advise.md`（四层背离下的防御配置）
+- 核心判断：基准 Stagflation 防御配置，但 4/30 GDP 可能推翻此判断
+
+## [2026-04-25 21:45] eco-prof | phase-3.3 | 中国市场扩展 — 数据管道 + Wiki 知识
+
+**数据层**：
+- 新建 `lab/tools/fetch_cn_indicators.py` — 中国宏观指标拉取
+  - 7 个 World Bank API 免费系列：GDP 增速、CPI、政府债务/GDP、经常账户/GDP、税收/GDP、失业率、人口
+  - 1 个 FRED 系列：DEXCHUS（USDCNY 汇率 6.82）
+  - 输出：8 个 CSV + cn_snapshot_YYYYMMDD.csv 快照
+  - 当前数据：中国 GDP 4.98%（2024）、CPI 0.22%（近通缩）、USDCNY 6.82
+
+**Wiki 知识**：
+- 新建 `概念/中国债务周期-china-debt-cycle.md` — 国有银行+房地产+LGFV 驱动，与美国模板的三点根本差异
+- 新建 `概念/A股市场特征-ashare-market-characteristics.md` — 散户主导/政策敏感/高波动，P001-P005 修正说明
+- 新建 `概念/中美周期联动-china-us-cycle-linkage.md` — 四大传导通道 + 当前最异步相位
+- 当前 wiki 页面总数：19（含 7 原则卡片）
+
+**下一步**：Phase 3.4 — eco-review 定期复盘技能
+
+## [2026-04-25 22:00] eco-prof | phase-3.4 | 创建定期复盘技能
+
+- 新建 `.claude/skills/eco-review/SKILL.md` — 定期复盘工作流
+  - 按周/月/事件驱动三种频率触发
+  - 回溯判断 vs 实际走势 → 修正原则
+  - 输出结构化复盘报告到 `lab/reports/`
+
+## [2026-04-25 22:00] eco-prof | phase-3 | 全部完成
+
+Phase 3 所有子阶段完成：
+
+| 子阶段 | 完成内容 |
+|-------|---------|
+| 3.1 新闻深度分析 | run_alerts.py 告警引擎 + event-brief 专题简报 + news-scan 增强 |
+| 3.2 投资建议引擎 | eco-advise 结构化配置建议（含置信度/时间框架/告警调整） |
+| 3.3 多市场扩展 | 中国数据管道（8 个系列）+ 3 个 wiki 概念页 |
+| 3.4 定期复盘 | eco-review 复盘工作流 |
+
+**进入 Phase 4：模拟交易系统**
+
+## [2026-04-25 22:30] eco-prof | phase-4.1 | 模拟交易系统上线
+
+- 新建 `lab/trading/paper/account.py` — 模拟账户（现金/持仓/P&L/交易记录，持久化到 JSON）
+- 新建 `lab/trading/paper/executor.py` — tilt→权重→ETF 持仓转换和执行
+- 新建 `lab/trading/paper/tracker.py` — NAV 快照记录、绩效追踪
+- 新建 `.claude/skills/eco-trade/SKILL.md` — 模拟交易执行工作流
+- 首次交易：Stagflation 配置已执行
+
+当前持仓（2026-04-25）：
+| ETF | 份额 | 权重 | 对应资产 |
+|-----|------|------|---------|
+| SPY | 0 | 0% | 股票（Stagflation → 0%）|
+| TLT | 101 | 9% | 长期国债（tilt -1）|
+| GLD | 151 | 36% | 商品/黄金（tilt +1，告警调整 +1 → +2）|
+| BIL | 556 | 55% | 现金（tilt +2，告警调整 +0.5 → +2.5 归一化后 55%）|
+| **总计** | | **100%** | 现金剩余 $182 |
+
+## [2026-04-25 23:00] eco-prof | 全系统集成验证
+
+所有 8 个技能已到位：
+1. wiki-query（知识查询）
+2. wiki-extract（原则提取）
+3. lab-diagnose（宏观诊断）
+4. lab-model（原则编码）
+5. lab-backtest（原则回测）
+6. news-scan（新闻扫描 + 原则关联 + 告警集成）
+7. news-alert → event-brief（框架告警 + 专题简报）
+8. eco-advise（投资建议）
+9. eco-trade（模拟交易执行）
+10. eco-review（定期复盘）
+11. eco-brief（每日简报，整合上面所有流程）
+
+项目状态：Phase 1-4.1 完成，等待用户确认评估后继续
+- 新建: `.claude/skills/lab-backtest/SKILL.md` — 回测工作流
+- 新建: `lab/tools/backtest_principles.py` — 回测引擎（支持 P001/P002/P005）
+- P001 回测: 精确率 75%，平均领先 17.3 个月 → SUPPORTED
+  - 2022-2024 深度倒挂 783 天尚未验证（当前 open case）
+- P002 回测: Growth>Rate 时债务下降仅 42% → WEAK，confidence 降为 medium
+  - 修正理解：方向正确但非因果，Rate>Growth 侧更可靠（69%）
+- P005 回测: 数据不足（SP500 从 2016 起，最大 divergence 仅 7.64%）→ INCONCLUSIVE
+- 已更新 P001/P002/P005 卡片添加 backtest_findings 字段
+- Phase 2 闭环完成（提取→编码→回测）
+
+## [2026-04-25 21:40] eco-prof | daily-brief | 滞胀+2P1告警，三层背离持续，伊朗战争主导地缘风险，消费者信心53.3极度低迷

@@ -1,0 +1,9 @@
+series_id,name,latest_date,latest_value
+NY.GDP.MKTP.KD.ZG,"GDP Growth (annual %, real)",2024-01-01,4.9773565917572
+FP.CPI.TOTL.ZG,CPI Inflation (annual %),2024-01-01,0.218128938439177
+NY.GDP.MKTP.CD,GDP (current US$),2024-01-01,18743803170827.2
+GC.TAX.TOTL.GD.ZS,Tax Revenue/GDP (%),2024-01-01,7.01276862066958
+BN.CAB.XOKA.GD.ZS,Current Account Balance/GDP (%),2024-01-01,2.2616499482671
+SL.UEM.TOTL.ZS,Unemployment Rate (%),2025-01-01,4.615
+SP.POP.TOTL,"Population, total",2024-01-01,1408975000.0
+DEXCHUS,China / US Foreign Exchange Rate (CNY per USD),2026-04-17,6.817

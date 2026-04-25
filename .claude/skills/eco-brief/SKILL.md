@@ -1,105 +1,140 @@
 ---
 name: eco-brief
-description: 每日/专题宏观简报的归档技能。接收 eco-prof 已合成好的内容，按模板写 lab/reports/YYYY-MM-DD_eco-brief.md，并在 wiki/log.md 追加一行。不做分析——分析是 eco-prof 做的，这里只做格式化和归档。
+description: 生成每日宏观简报 — 调用诊断+新闻+wiki 框架综合输出
+trigger: user invokes /eco-brief command
 ---
 
-# eco-brief — 简报归档技能
+# eco-brief — 每日宏观简报生成
 
-## 契约（稳定）
+按照"数据诊断 → 新闻 → 框架对照 → 资产建议 → 待观察"的标准化结构，生成完整简报。
 
-**输入**（由 eco-prof 传入已综合好的内容）：
-- `mode`: `daily | topic`（必需）
-- `date`: YYYY-MM-DD（默认今日）
-- `focus`: 可选，专题时用作标题副标题
-- `tldr`: 3 句内核心判断（必需）
-- `alerts`: 可选，告警板块原文
-- `diagnosis_block`: lab-diagnose 输出的 Markdown（必需）
-- `news_block`: news-scan 输出的 Markdown（必需，若当日无新闻也要写"无新增"）
-- `framework_block`: wiki-query 输出的 Markdown（必需）
-- `asset_tilts_note`: 对 regime.py 默认资产倾向的补充说明（可选；不要推翻，除非数据有力）
-- `watch_list`: 下一步值得关注的问题/信号
-- `data_refs`: 数据与新闻文件路径列表
+## 前置条件
 
-**输出**：
-- 写文件 `lab/reports/YYYY-MM-DD_eco-brief.md`（专题模式则为 `YYYY-MM-DD_eco-brief-<focus-slug>.md`）
-- 追加 `wiki/log.md` 一行（见下）
-- 返回写入路径
+调用本 skill 前，先运行：
+1. **lab-diagnose** — 获取当前诊断数据
+2. **news-scan** — 获取今日新闻要点
+3. **wiki-query** — 读取当前 regime 相关的框架内容（如需要）
 
-## 模板
+或者直接运行三段式流程（下面包含所有这些步骤）。
+
+## 简报流程
+
+### Step 1：运行数据诊断
+
+执行 lab-diagnose skill 的完整流程（读 snapshot → 计算诊断 → 计算 regime）。
+
+关键输出：
+- 债务周期阶段（Layer 1）
+- 增长-通胀 regime（Layer 2）
+- 资产配置倾向（股票/长债/商品黄金/现金）
+- 长期结构风险（Layer 3）
+- 近 7 天 regime 轨迹（从 diagnosis_history.jsonl 读取）
+
+### Step 2：扫描今日新闻
+
+执行 news-scan skill 的完整流程。
+
+### Step 3：对照 wiki 框架解读
+
+读取相关 wiki 页面，将当前数据与框架对照：
+
+- `knowledge/wiki/analyses/宏观环境判断与投资指引框架.md` — 三层诊断 + 资产配置映射
+- `knowledge/wiki/analyses/债务周期阶段判断框架.md` — 核心指标解读
+- `knowledge/wiki/analyses/债务周期的内在逻辑——从生产率到泡沫.md` — 资产通胀 vs 商品通胀
+
+对照要点：
+- **三层背离检查**：Layer 1 / Layer 2 / Layer 3 的信号是否一致？矛盾意味着什么？
+- **当前 regime 的经典资产应对**：框架怎么规定？当前有什么特殊情况？
+- **关键阈值检查**：哪些指标接近/触达了框架定义的警戒线？
+- **框架不足标注**：当前分析中有哪些框架无法覆盖的盲区？
+
+### Step 4：运行告警引擎
+
+调用 `lab/tools/run_alerts.py` 自动检查所有硬信号和软信号：
+
+```bash
+python3 lab/tools/run_alerts.py --date $(date +%Y-%m-%d) --news lab/news/<today>.jsonl
+```
+
+告警引擎输出包含：
+- **triggered_alerts**：本次新触发的告警列表
+- **p1_count / p2_count**：各级别告警数量
+- **active_alerts**：当前所有活跃告警（含持续中）
+
+将告警输出作为简报 ⚠️ 部分的直接数据源。
+
+**P1 告警升级**：如果 `p1_count > 0`，在简报中额外生成一个"🔥 P1 紧急事项"区块，
+并建议用户/系统调用 `event-brief` skill 生成专题简报。
+
+### Step 5：写简报
+
+写入 `lab/reports/YYYY-MM-DD_eco-brief.md`，结构如下：
 
 ```markdown
 ---
-title: "eco_prof Daily Brief <date>"
-date: <date>
-mode: <mode>
-focus: <focus or null>
-regime: <quadrant>
-debt_stage: <stage>
-alerts: <bool>
-framework_ref: wiki/analyses/宏观环境判断与投资指引框架.md
+title: "eco_prof Daily Brief YYYY-MM-DD"
+date: YYYY-MM-DD
+mode: daily
+regime: "..."
+debt_stage: "..."
+alerts: true/false
+alerts_p1: <count>
+alerts_p2: <count>
+framework_ref: knowledge/wiki/analyses/宏观环境判断与投资指引框架.md
 ---
-
-# eco_prof Daily Brief — <date>
 
 ## TL;DR
-<tldr>
+（1-3 句话全局总结，如果步告警引擎返回了 P1 告警，必须在 TL;DR 中提及）
 
-<if alerts: ## ⚠️ 告警\n<alerts>>
+## ⚠️ 告警
+
+（从告警引擎输出渲染，格式：）
+
+| 级别 | 告警 | 当前值 | 关联原则 |
+|------|------|--------|---------|
+| 🔴 P1 | 地缘冲突 | 战争/制裁关键词匹配 | — |
+| 🟡 P2 | 消费者信心 | UMCSENT 53.3 | — |
+| 🟡 P2 | 债务/GDP 警戒 | 342.5% | P003 |
+
+持续中告警标注「🔄 持续中」
+
+### 🔥 P1 紧急事项
+（如果 p1_count > 0，解释每个 P1 告警的含义和影响）
 
 ## 1. 当日数据诊断
-<diagnosis_block>
+- 债务周期阶段 + 5 信号表格
+- 增长通胀 Regime
+- 资产倾向
+- 长期结构风险
+- 近 7 天 Regime 轨迹
 
-## 2. 新闻要点（过去 24h）
-<news_block>
+## 2. 新闻要点（按 category 分组）
 
 ## 3. 框架对照
-<framework_block>
+- 对照 wiki 分析各信号含义
+- 框架要点
+- 框架不足
 
 ## 4. 资产倾向
-<默认由 regime.py 给出，此处只呈现表格；若 asset_tilts_note 非空，附加于表格下方>
-
-| 资产 | 倾向 | 说明 |
-|---|---|---|
-| 股票 | +X | ... |
-| 长期国债 | +X | ... |
-| 商品/黄金 | +X | ... |
-| 现金 | +X | ... |
-
-<asset_tilts_note if any>
+- 框架给出的倾向 + 当前市场情况的修正说明
 
 ## 5. 待关注问题
-<watch_list>
+（未来 1-2 周的关键事件和数据发布）
 
 ## 6. 数据引用
-<data_refs bulleted>
+（所有用到的数据文件路径）
 
 ---
-*由 eco-prof 在 <local timestamp> 生成 · mode=<mode>*
 ```
 
-## 实现步骤
+### Step 6：更新日志
 
-1. 计算 `date`（默认 `datetime.date.today()`）
-2. 计算文件路径 `lab/reports/YYYY-MM-DD_eco-brief[-<focus-slug>].md`
-   - focus-slug：中文保留，空格转 `-`，截断 30 字
-3. 用 Write 工具写入（若文件已存在且同日同 focus → 加后缀 `-v2`，不覆盖）
-4. 用 Bash 追加一行到 `wiki/log.md`：
-   ```
-   ## [YYYY-MM-DD HH:MM] eco-prof | <mode> | <tldr 第一句>
-   - 归档: lab/reports/<filename>
-   - regime: <quadrant> · debt_stage: <stage>
-   <- alerts: yes if alerts else omit>
-   ```
-5. 返回绝对路径字符串
+追加一条记录到 `knowledge/wiki/log.md`：
+```
+## [YYYY-MM-DD HH:MM] eco-prof | daily-brief | <一句话总结>
+```
 
-## 约束
+## 输出
 
-- **不做分析**：不重新判断 regime，不改 tilts，不挑战诊断——那是 eco-prof 的事。这里只做**搬运工 + 格式化**。
-- **不读 wiki 原文**：framework_block 由 eco-prof/wiki-query 提供；这里只贴。
-- 如果任何必需输入缺失：报错 + 列出缺项，不要用空字符串糊弄。
-
-## 演进路径
-
-- v0.2：支持 `format: markdown | html | pdf`（pdf 用 pandoc）
-- v0.3：同时发送到 webhook（Slack / Telegram）
-- v0.4：简报之间加"和上次比"的 diff 板块
+- 主产出：`lab/reports/YYYY-MM-DD_eco-brief.md`
+- 日志条目：`knowledge/wiki/log.md`

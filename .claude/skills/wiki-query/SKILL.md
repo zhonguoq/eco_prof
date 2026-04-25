@@ -1,49 +1,29 @@
 ---
 name: wiki-query
-description: 在本仓库 wiki/ 目录里检索经济学框架、概念与分析。输入是话题、当前宏观状态描述、或想查的概念名；输出相关概念摘要、引用的 wiki 页相对路径、与当前状态对应的判断要点。v0.1 用 Read + Grep；v0.2 可换 qmd 向量检索。
+description: 查询知识库，回答经济/金融/投资框架相关问题
+trigger: user asks about wiki content or economic concepts
 ---
 
-# wiki-query — wiki 知识检索技能
+# wiki-query — 知识库查询
 
-## 契约（稳定）
+回答用户问题时，将 wiki 知识作为参考依据。
 
-**输入**（自然语言即可，包含其一/多即可）：
-- 话题或问题（如："当前美国债务周期处于什么阶段？"）
-- 状态描述（如："regime=Stagflation，yield curve 趋平，HY 利差 4.8%"）
-- 概念名（如："储备货币周期"、"beautiful deleveraging"）
+## 流程
 
-**输出**（结构化 Markdown）：
-```
-### 相关 wiki 页
-- [page-title](相对路径) — 一行摘要
-- ...
+1. **定位相关页面**
+   - 读 `knowledge/wiki/index.md` 检索关键词
+   - 用 Grep 在 `knowledge/wiki/` 下搜索关键词
 
-### 框架要点（针对输入场景摘要）
-- 要点 1（对应 wiki 哪一段）
-- 要点 2
-- ...
+2. **读取候选页**
+   - 读取匹配的 `.md` 文件
+   - 关注 frontmatter 中的 tags、sources、related 信息
 
-### 应用到当前状态的判断提示
-- 框架告诉我们应该关注什么
-- 框架里列出的 x 条件是否满足
-- ...
+3. **综合回答**
+   - 引用页面路径和具体内容
+   - 突出概念间的关联（内链）
+   - 如果答案不在 wiki 中，说明"知识库未覆盖，以下基于通用知识"
 
-### 不足
-- 哪些问题在现有 wiki 里没找到答案，可能值得新建页
-```
-
-## 实现步骤（v0.1，可演进）
-
-1. **定位**：先 `Read wiki/index.md` 扫标题列，挑出相关候选页（概念 + 分析 + 思想家）。如果输入涉及"框架/判断/诊断"，`wiki/analyses/` 一定要扫。
-2. **展开**：对每个候选页用 `Read` 或 `Grep`（Grep 更高效，用关键词）。优先读 `wiki/analyses/*.md`（框架），再读 `wiki/concepts/*.md`（概念），思想家页只在明确问人时读。
-3. **综合**：
-   - 引用路径**必须**相对于仓库根，不要写绝对路径
-   - 要点直接引用原文短句或压缩，不要改写原意
-   - 若多个页面对同一概念说法不一致，明说"wiki 内部有张力，建议 lint"
-4. **不足声明**：如果输入的话题在 wiki 里确实找不到，诚实说"wiki 暂无相关页"，并建议值得新建的页面名。
-
-## 演进注记
-
-- v0.1：Read + Grep，够用到 ~50 页规模。
-- v0.2：接入 qmd 本地搜索（`brew install qmd` 后 `qmd query --dir wiki/ "..."`），契约不变。
-- v0.3：wiki-expert subagent 接管，skill 降级为别名或废弃。
+## 约束
+- 遵循 `knowledge/SCHEMA.md` 的格式规范引用
+- 不要编造不存在的 wiki 页
+- 涉及数据/数值的内容，优先引用 lab/data/ 的最新值

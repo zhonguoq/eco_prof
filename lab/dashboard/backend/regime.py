@@ -25,6 +25,13 @@ import pandas as pd
 
 
 # ---------------------------------------------------------------------------
+# Data paths
+# ---------------------------------------------------------------------------
+
+DATA_DIR = Path(__file__).parent.parent.parent / "data"
+
+
+# ---------------------------------------------------------------------------
 # Configurable thresholds
 # ---------------------------------------------------------------------------
 
@@ -33,6 +40,21 @@ INFLATION_THRESHOLD = 3.0  # CPI YoY %: above = high inflation
 
 DEBT_GDP_WARNING = 300   # Total debt/GDP % warning line
 DEBT_GDP_DANGER = 350    # Total debt/GDP % danger line
+
+# B4 — Yield curve shape thresholds
+YC_SHAPE_THRESHOLDS = {
+    "inversion_max": 0.0,          # spread <= 0 = inverted
+    "flattening_max": 0.5,         # spread <= 0.5, trend negative = flattening
+    "short_end_low": 0.5,          # DGS2 < 0.5% = ultra-flat (QE regime)
+}
+
+# A6 — Rate phase thresholds
+RATE_PHASE_THRESHOLDS = {
+    "high_rate": 3.0,              # FEDFUNDS > 3% = high
+    "low_rate": 0.5,               # FEDFUNDS < 0.5% = near zero
+    "trend_window_days": 63,       # ~3 months for trend calculation
+    "trend_threshold": 0.25,       # > 0.25% change = meaningful trend
+}
 
 # ---------------------------------------------------------------------------
 # Growth-Inflation 4-Quadrant Model
@@ -68,6 +90,196 @@ ASSET_NAMES_CN = {
 }
 
 
+# ---------------------------------------------------------------------------
+# B4 — Yield Curve Shape Classification (6-phase classifier)
+# ---------------------------------------------------------------------------
+
+YC_SHAPES = {
+    "normal":       {"cn": "正常正斜率",  "phase": "早期健康 / 正常化"},
+    "flattening":   {"cn": "趋平",        "phase": "泡沫中后期"},
+    "inverted":     {"cn": "倒挂",        "phase": "顶部 / 收缩期"},
+    "bull_steep":   {"cn": "牛陡",        "phase": "衰退 / 萧条开始"},
+    "ultra_flat":   {"cn": "超平近零",    "phase": "去杠杆 / QE"},
+    "recovery":     {"cn": "恢复正斜率",  "phase": "正常化"},
+}
+
+
+def _read_latest_series_df(data_dir: Path, series_id: str) -> pd.DataFrame | None:
+    """Read the most recent CSV file for a FRED series."""
+    import glob
+    pattern = str(data_dir / f"fred_{series_id.lower()}_*.csv")
+    files = sorted(glob.glob(pattern))
+    if not files:
+        return None
+    df = pd.read_csv(files[-1], index_col=0, parse_dates=True)
+    df.columns = ["value"]
+    return df.dropna()
+
+
+def _get_trend(series: pd.DataFrame, window: int = 63) -> float | None:
+    """Compute approximate trend over the trailing window (in units/second)."""
+    recent = series.dropna().iloc[-window:] if len(series) > window else series.dropna()
+    if len(recent) < 2:
+        return None
+    return float(recent["value"].iloc[-1] - recent["value"].iloc[0])
+
+
+# P001/B4 — Yield Curve Shape Classification
+def classify_yield_curve_shape(
+    spread: float | None,
+    dgs2: float | None,
+) -> dict[str, Any] | None:
+    """
+    Classify yield curve into 6 shapes based on spread level + short-end trend.
+
+    Returns: {id, label, shape_cn, phase, note} or None if data insufficient.
+    """
+    if spread is None:
+        return None
+
+    # Default classification
+    result = {
+        "id": "yield_curve_shape",
+        "label": "收益率曲线形态",
+        "spread": f"{spread:+.2f}%",
+    }
+
+    # Spread-only classification (when trend data unavailable)
+    if spread <= YC_SHAPE_THRESHOLDS["inversion_max"]:
+        if dgs2 is not None and dgs2 < YC_SHAPE_THRESHOLDS["short_end_low"]:
+            result.update(YC_SHAPES["ultra_flat"])
+            result["note"] = "短端近零 + 曲线倒挂 — QE 压制下的去杠杆阶段"
+        else:
+            result.update(YC_SHAPES["inverted"])
+            result["note"] = f"曲线倒挂（{spread:+.2f}%）— 衰退预警，领先约 12-18 个月"
+    elif spread <= YC_SHAPE_THRESHOLDS["flattening_max"]:
+        result.update(YC_SHAPES["flattening"])
+        result["note"] = f"曲线趋平（{spread:+.2f}%）— 泡沫中后期特征"
+    elif dgs2 is not None and dgs2 < YC_SHAPE_THRESHOLDS["short_end_low"]:
+        result.update(YC_SHAPES["ultra_flat"])
+        result["note"] = "短端近零 — 货币政策极度宽松，收益率曲线受 QE 压制"
+    else:
+        result.update(YC_SHAPES["normal"])
+        result["note"] = f"曲线正常正斜率（{spread:+.2f}%）— 经济扩张/正常化"
+
+    # Try to refine with trend data
+    try:
+        t10y2y_series = _read_latest_series_df(DATA_DIR, "T10Y2Y")
+        dgs2_series = _read_latest_series_df(DATA_DIR, "DGS2")
+        if t10y2y_series is not None:
+            spread_trend = _get_trend(t10y2y_series, RATE_PHASE_THRESHOLDS["trend_window_days"])
+            if spread_trend is not None:
+                # Refine classification with trend info
+                if spread > 0 and spread_trend < -RATE_PHASE_THRESHOLDS["trend_threshold"]:
+                    # Curve positive but narrowing = flattening
+                    if spread <= YC_SHAPE_THRESHOLDS["flattening_max"]:
+                        result.update(YC_SHAPES["flattening"])
+                        result["note"] = f"曲线趋平（{spread:+.2f}%，趋势 {spread_trend:+.2f}%）— 泡沫中后期"
+                    else:
+                        result["note"] += f" 但趋势趋平（{spread_trend:+.2f}%），关注倒挂风险"
+                elif spread <= 0 and dgs2_series is not None:
+                    dgs2_trend = _get_trend(dgs2_series, RATE_PHASE_THRESHOLDS["trend_window_days"])
+                    if dgs2_trend is not None and dgs2_trend < -RATE_PHASE_THRESHOLDS["trend_threshold"]:
+                        # Short end collapsing while still inverted
+                        result.update(YC_SHAPES["bull_steep"])
+                        result["note"] = f"牛陡 — 短端快速下行（{dgs2_trend:+.2f}%），衰退/萧条确认"
+                    elif spread_trend > RATE_PHASE_THRESHOLDS["trend_threshold"]:
+                        # Inversion narrowing
+                        result["note"] += "，倒挂深度在收窄"
+    except (IndexError, FileNotFoundError, OSError):
+        pass  # Fall back to spread-only classification
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# A6 — Rate Phase Classification (level + direction)
+# ---------------------------------------------------------------------------
+
+
+def classify_rate_phase(fedfunds: float | None) -> dict[str, Any] | None:
+    """
+    Classify monetary policy phase based on fed funds rate level + trend.
+
+    Returns: {id, label, phase, phase_cn, note} or None if data insufficient.
+    """
+    if fedfunds is None:
+        return None
+
+    result = {
+        "id": "rate_phase",
+        "label": "利率阶段",
+        "value": f"{fedfunds:.2f}%",
+    }
+
+    # Level-based with trend refinement
+    if fedfunds < RATE_PHASE_THRESHOLDS["low_rate"]:
+        result["phase"] = "depression_deleveraging"
+        result["phase_cn"] = "萧条/去杠杆期"
+        result["note"] = f"利率近零（{fedfunds:.2f}%）— 常规工具耗尽，靠非常规货币政策"
+        result["status"] = "danger"
+    elif fedfunds < RATE_PHASE_THRESHOLDS["high_rate"]:
+        # Low to moderate — try to infer trend
+        try:
+            fed_series = _read_latest_series_df(DATA_DIR, "FEDFUNDS")
+            if fed_series is not None:
+                trend = _get_trend(fed_series, RATE_PHASE_THRESHOLDS["trend_window_days"])
+            else:
+                trend = None
+        except (IndexError, FileNotFoundError, OSError):
+            trend = None
+
+        if trend is not None:
+            if fedfunds < 1.0 and trend > RATE_PHASE_THRESHOLDS["trend_threshold"]:
+                result["phase"] = "early_normalization"
+                result["phase_cn"] = "早期正常化"
+                result["note"] = f"利率从低位缓慢回升（{fedfunds:.2f}% → 趋势 {trend:+.2f}%）— 正常化初期"
+                result["status"] = "ok"
+            elif trend > RATE_PHASE_THRESHOLDS["trend_threshold"]:
+                result["phase"] = "tightening"
+                result["phase_cn"] = "收紧阶段"
+                result["note"] = f"利率中等且上升（{fedfunds:.2f}%，趋势 {trend:+.2f}%）— 收紧中"
+                result["status"] = "warning" if fedfunds > 2.0 else "ok"
+            elif trend < -RATE_PHASE_THRESHOLDS["trend_threshold"]:
+                result["phase"] = "easing"
+                result["phase_cn"] = "放松阶段"
+                result["note"] = f"利率中等且下降（{fedfunds:.2f}%，趋势 {trend:+.2f}%）— 宽松中"
+                result["status"] = "warning"
+            else:
+                result["phase"] = "neutral"
+                result["phase_cn"] = "中性阶段"
+                result["note"] = f"利率中等且稳定（{fedfunds:.2f}%）— 观察期"
+                result["status"] = "ok"
+        else:
+            result["phase"] = "moderate"
+            result["phase_cn"] = "中等利率"
+            result["note"] = f"利率中等（{fedfunds:.2f}%）— 有一定政策空间"
+            result["status"] = "ok"
+    else:
+        # High rate — try trend
+        try:
+            fed_series = _read_latest_series_df(DATA_DIR, "FEDFUNDS")
+            if fed_series is not None:
+                trend = _get_trend(fed_series, RATE_PHASE_THRESHOLDS["trend_window_days"])
+            else:
+                trend = None
+        except (IndexError, FileNotFoundError, OSError):
+            trend = None
+
+        if trend is not None and trend < -RATE_PHASE_THRESHOLDS["trend_threshold"]:
+            result["phase"] = "peak_reversal"
+            result["phase_cn"] = "顶部反转"
+            result["note"] = f"利率触顶快速回落（{fedfunds:.2f}%，趋势 {trend:+.2f}%）— 衰退确认，政策急转弯"
+            result["status"] = "danger"
+        else:
+            result["phase"] = "high_plateau"
+            result["phase_cn"] = "高位僵持"
+            result["note"] = f"利率高位（{fedfunds:.2f}%）— 压制通胀，但经济可能承压"
+            result["status"] = "warning"
+
+    return result
+
+
 def _get_snapshot_value(snapshot: pd.DataFrame, series_id: str) -> float | None:
     rows = snapshot[snapshot["series_id"] == series_id]["latest_value"].values
     return float(rows[0]) if len(rows) else None
@@ -87,6 +299,9 @@ def compute_regime(snapshot: pd.DataFrame) -> dict[str, Any]:
     tcmdo = get("TCMDO")
     gdp = get("GDP")
     fed_debt_gdp = get("GFDEGDQ188S")
+    t10y2y = get("T10Y2Y")
+    dgs2 = get("DGS2")
+    fedfunds = get("FEDFUNDS")
 
     # --- Layer 2: Growth-Inflation Regime ---
     regime_quadrant = None
@@ -136,6 +351,44 @@ def compute_regime(snapshot: pd.DataFrame) -> dict[str, Any]:
         aux_signals.append({
             "id": "usd_index", "label": "美元指数",
             "value": f"{dtwexbgs:.1f}", "status": "neutral",
+        })
+
+    # P005 — Asset-Inflation Divergence (SP500 YoY - CPI YoY)
+    divergence = get("ASSET_INFLATION_DIVERGENCE")
+    if divergence is not None:
+        if divergence > 20:
+            div_status = "danger"
+            div_note = f"资产通胀远超商品通胀（+{divergence:.0f}%）— 典型泡沫特征，警惕均值回归"
+        elif divergence > 10:
+            div_status = "warning"
+            div_note = f"资产通胀显著高于商品通胀（+{divergence:.0f}%）— 关注资金流向和杠杆积累"
+        elif divergence < -10:
+            div_status = "warning"
+            div_note = f"资产价格跑输通胀（{divergence:.0f}%）— 可能反映了经济悲观预期"
+        else:
+            div_status = "ok"
+            div_note = f"资产通胀与商品通胀基本同步（{divergence:+.0f}%）"
+        aux_signals.append({
+            "id": "asset_inflation_divergence", "label": "资产通胀背离",
+            "value": f"{divergence:+.1f}%", "status": div_status, "note": div_note,
+        })
+
+    # B4 — Yield Curve Shape Classification
+    yc = classify_yield_curve_shape(t10y2y, dgs2)
+    if yc:
+        aux_signals.append({
+            "id": "yield_curve_shape", "label": "收益率曲线形态",
+            "value": yc.get("spread", ""), "status": yc.get("phase", ""),
+            "shape": yc.get("cn", ""), "note": yc.get("note", ""),
+        })
+
+    # A6 — Rate Phase Classification
+    rp = classify_rate_phase(fedfunds)
+    if rp:
+        aux_signals.append({
+            "id": "rate_phase", "label": "利率阶段",
+            "value": rp.get("value", ""), "status": rp.get("status", "ok"),
+            "phase": rp.get("phase_cn", ""), "note": rp.get("note", ""),
         })
 
     regime["aux_signals"] = aux_signals

@@ -83,6 +83,9 @@ SERIES = {
     # Early-warning
     "BAMLH0A0HYM2":  "ICE BofA US HY OAS (credit spread, %)",
     "DRCCLACBS":     "Credit Card Delinquency Rate (%, quarterly)",
+
+    # Group 5 — Asset-Inflation Divergence (P005)
+    "SP500":         "S&P 500 Index (monthly, SA)",
 }
 
 
@@ -141,6 +144,48 @@ def compute_cpi_yoy(dfs: "dict[str, pd.DataFrame]") -> Optional[pd.DataFrame]:
     return None
 
 
+def compute_sp500_yoy(dfs: "dict[str, pd.DataFrame]") -> Optional[pd.DataFrame]:
+    """Compute S&P 500 YoY % change from monthly SP500 index."""
+    if "SP500" in dfs:
+        sp500 = dfs["SP500"].iloc[:, 0].dropna()
+        yoy = sp500.pct_change(12) * 100  # 12 months back
+        df = yoy.to_frame(name="S&P 500 YoY Change (%)")
+        df.index.name = "date"
+        return df
+    return None
+
+
+def compute_asset_inflation_divergence(
+    dfs: "dict[str, pd.DataFrame]",
+) -> Optional[pd.DataFrame]:
+    """
+    Compute asset price vs goods price divergence (P005).
+
+    divergence = SP500 YoY (%) - CPI YoY (%)
+
+    A large positive value means asset prices are inflating much faster than
+    consumer goods — a signal of potential asset bubble / credit-fueled speculation.
+    """
+    sp500_yoy = None
+    cpi_yoy = None
+    if "SP500" in dfs:
+        sp500 = dfs["SP500"].iloc[:, 0].dropna()
+        sp500_yoy = sp500.pct_change(12) * 100
+    if "CPIAUCSL" in dfs:
+        cpi = dfs["CPIAUCSL"].iloc[:, 0].dropna()
+        cpi_yoy = cpi.pct_change(12) * 100
+
+    if sp500_yoy is not None and cpi_yoy is not None:
+        # Align by joining on date index
+        combined = sp500_yoy.to_frame("sp500_yoy").join(cpi_yoy.to_frame("cpi_yoy"), how="inner")
+        divergence = (combined["sp500_yoy"] - combined["cpi_yoy"]).to_frame(
+            name="Asset Inflation Divergence (SP500 YoY - CPI YoY, %)"
+        )
+        divergence.index.name = "date"
+        return divergence
+    return None
+
+
 def save(df: pd.DataFrame, label: str) -> Path:
     """Save DataFrame to CSV, return path."""
     filename = f"fred_{label.lower()}_{TODAY}.csv"
@@ -179,6 +224,15 @@ def main():
     cpi_yoy = compute_cpi_yoy(dfs)
     if cpi_yoy is not None:
         dfs["CPI_YOY"] = cpi_yoy
+
+    # P005 — Asset price YoY and divergence from inflation
+    sp500_yoy = compute_sp500_yoy(dfs)
+    if sp500_yoy is not None:
+        dfs["SP500_YOY"] = sp500_yoy
+
+    divergence = compute_asset_inflation_divergence(dfs)
+    if divergence is not None:
+        dfs["ASSET_INFLATION_DIVERGENCE"] = divergence
 
     # Save each series
     print(f"\nSaving to {DATA_DIR}/")
