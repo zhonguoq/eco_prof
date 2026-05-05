@@ -1,4 +1,4 @@
-# lab/ — 实践层（数据、工具、报告）
+# lab/ — 实践层（数据、引擎、报告）
 
 lab/ 是"理论落地"层，严格与 `knowledge/` 分离。它读 knowledge/wiki/ 的框架、跑数据、产出诊断与简报；**从不反向写入 knowledge/**（除非用户确认归档有长期价值的 analyses）。
 
@@ -7,22 +7,29 @@ lab/ 是"理论落地"层，严格与 `knowledge/` 分离。它读 knowledge/wik
 ```
 lab/
 ├── CLAUDE.md               # 本文件
-├── tools/                  # 数据/诊断/归档脚本
-│   ├── fetch_us_indicators.py   # FRED 宏观指标
-│   ├── fetch_yield_curve.py     # 收益率曲线
-│   ├── fetch_news.py            # RSS 新闻采集
-│   ├── news_sources.yaml        # RSS 源配置
-│   ├── query_news.py            # 新闻查询 + 过滤 + 排序（供 news-scan skill）
-│   ├── run_diagnosis.py         # 跑债务周期 + regime 诊断（供 lab-diagnose skill）
-│   └── write_brief.py           # 简报归档 + 日志追加（供 eco-brief skill）
-├── data/                   # 拉到的原始数据
-│   ├── fred_snapshot_YYYYMMDD.csv
-│   └── diagnosis_history.jsonl
-├── news/
-│   └── YYYY-MM-DD.jsonl    # 每日新闻（UTC 日期）
-├── reports/
-│   └── YYYY-MM-DD_eco-brief[-<focus-slug>].md
-└── dashboard/              # FastAPI + React 可视化（APScheduler 每日 06:00 UTC 刷 FRED）
+├── scripts/                # 入口脚本（CLI）
+│   ├── init_db.py               # 数据库初始化
+│   ├── fetch_macro.py           # 宏观数据采集
+│   ├── diagnose.py              # 宏观诊断
+│   ├── render_diagnosis.py      # 宏观报告 HTML
+│   ├── fetch_financials.py      # 微观数据采集
+│   ├── dcf.py                   # DCF 估值
+│   ├── factor_score.py          # 因子排名
+│   ├── render_micro.py          # 微观报告 HTML
+│   ├── record_judgment.py       # 记录判断
+│   ├── list_judgments.py        # 查询判断
+│   ├── update_judgment.py       # 更新判断
+│   └── check_disconfirmation.py # 背离检测
+├── engine/                 # 引擎代码（三库三引擎）
+│   ├── db.py               #   DB 连接管理（get_db）
+│   ├── macro/              #   宏观引擎：fetcher + diagnose + 规则
+│   ├── micro/              #   微观引擎：fetcher + dcf + factors
+│   └── meta/               #   元引擎：judgment + disconfirmation
+├── chart_lib/              # 图表组件库（pyecharts）
+├── db/                     # SQLite 数据库文件（gitignored）
+├── data/                   # 原始数据（CSV / JSONL）
+├── news/                   # 每日新闻
+└── reports/                # 分析简报
 ```
 
 ---
@@ -32,56 +39,52 @@ lab/
 ### 单向引用
 
 ```
-knowledge/wiki (theory) ──referenced by──→ lab/tools (implements framework indicators)
-                                                ↓ produces data and reports
-                                         lab/reports/
-                                                ↓ archive highlights (user confirms)
-                                         knowledge/wiki/analyses/ (permanent knowledge)
+knowledge/wiki (theory)
+    ↓ referenced by
+lab/engine/ (implements framework indicators)
+    ↓ produces data
+lab/reports/ + lab/db/
+    ↓ archive highlights (user confirms)
+knowledge/wiki/analyses/
 ```
 
-- `lab/tools/*.py` **引用** `knowledge/wiki/analyses/` 作为框架依据；**禁止写入** `knowledge/`
-- `lab/data/` 存原始数据——中间产物
-- `lab/reports/` 存分析快照；产生长期价值结论时由 eco-prof 提议归档到 `knowledge/wiki/analyses/`
+- `lab/engine/` 引用 `knowledge/wiki/` 作为框架依据；禁止写入
+- `lab/db/` 存 SQLite 数据库（三库分离：macro.db / meta.db / micro.db）
+- `lab/reports/` 存分析快照；长期价值结论由 eco-prof 提议归档
 
 ### 命名约定
 
-- 工具脚本：`tools/<description>.py` —— 如 `fetch_us_indicators.py`
-- 数据文件：`data/<source>_<indicator>_<date>.csv` —— 如 `fred_yield_curve_20260412.csv`
-- 报告文件：`reports/<YYYY-MM-DD>_<topic>.md` —— 如 `2026-04-12_us-debt-cycle-diagnosis.md`
+- 引擎代码：`engine/<domain>/<module>.py` —— 如 `engine/macro/diagnose.py`
+- 入口脚本：`scripts/<action>.py` —— 如 `scripts/diagnose.py`
+- 图表组件：`chart_lib/<domain>_charts.py` —— 如 `chart_lib/macro_charts.py`
+- 数据文件：`data/<source>_<indicator>_<date>.csv`
 
 ---
 
-## 脚本调用规范（skill 与脚本的接口）
+## 脚本调用规范
 
-所有被 skill 调用的脚本（`query_news.py` / `run_diagnosis.py` / `write_brief.py` 等）遵守：
+所有 `scripts/` 下的入口脚本遵守：
 
-1. **stdout 只输出 JSON**（结构化契约），供 LLM 解析后做渲染判断
-2. **stderr 输出日志**（汇总行、错误）
-3. **失败以非零退出码 + stderr 说明**，不静默
-4. **幂等**：同日多跑不产生重复数据（按 hash 或 date 去重）
-5. **参数用 argparse**，参数名和 skill 的契约字段一一对应
+1. **stdout 输出** — 对用户有用的信息（JSON 或文本）
+2. **stderr 输出错误** — 非零退出码 + 错误说明
+3. **幂等** — 重复运行不产生重复数据（INSERT OR REPLACE）
+4. **参数用 argparse** — 参数名与 issue 契约一致
+5. **sys.path hack** — `sys.path.insert(0, ...)` 确保 `from lab.engine.*` 能 import
 
 ---
 
 ## 工作流
 
 ### Fetch
-1. 跑 `lab/tools/` 的 fetch 脚本
-2. 输出落 `lab/data/` 或 `lab/news/`
-3. 追加一行 `knowledge/wiki/log.md`
+1. 跑 `scripts/fetch_macro.py` → 写入 macro.db
+2. 跑 `scripts/fetch_financials.py --code <code>` → 写入 micro.db
+3. 数据以 SQLite 三库为核心存储
 
-### Analyze
-1. LLM 读最新 `lab/data/` / `lab/news/`
-2. 对照 `knowledge/wiki/analyses/` 里的框架做判断
-3. 写诊断到 `lab/reports/`
-4. 长期价值结论 → 提议归档到 `knowledge/wiki/analyses/`
+### Diagnose
+1. 跑 `scripts/diagnose.py` → 读取 macro.db → 输出阶段判定 JSON
+2. 跑 `scripts/check_disconfirmation.py` → 扫描 meta.db 的背离
 
-### Alert
-- 关键指标触达 `knowledge/wiki/analyses/` 定义的危险线 → 在简报顶加 ⚠️ 告警
-- 告警行追加到 `knowledge/wiki/log.md`
-
----
-
-## dashboard 说明
-
-`lab/dashboard/backend/` 是纯函数模块，`regime.py` / `main.py` 的 `compute_regime` / `compute_diagnosis` 等函数被 `lab/tools/run_diagnosis.py` 直接 import。改动这些函数要保持签名稳定。
+### Report
+1. 跑 `scripts/render_diagnosis.py` → 生成宏观 HTML 报告
+2. 跑 `scripts/render_micro.py --code <code>` → 生成个股 HTML 报告
+3. 跑 `scripts/render_micro.py --industry <name>` → 生成行业 HTML 报告

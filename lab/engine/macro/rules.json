@@ -1,0 +1,20 @@
+{
+  "stages": [
+    {"id": 3, "name": "顶部", "name_en": "Top", "priority": 1},
+    {"id": 2, "name": "泡沫期", "name_en": "Bubble", "priority": 2},
+    {"id": 5, "name": "美丽去杠杆", "name_en": "Beautiful Deleveraging", "priority": 3},
+    {"id": 1, "name": "早期", "name_en": "Early", "priority": 4},
+    {"id": 6, "name": "推绳子", "name_en": "Pushing on a String", "priority": 5},
+    {"id": 7, "name": "正常化", "name_en": "Normalization", "priority": 6},
+    {"id": 4, "name": "萧条", "name_en": "Depression", "priority": 7}
+  ],
+  "signals": {
+    "stage_3": {"T10Y2Y_lt": 0, "CPI_YOY_gt": 3, "UNRATE_gt": 4},
+    "stage_2": {"T10Y2Y_lt": 0.5, "T10Y2Y_gt": -0.1, "FEDFUNDS_gt": 3, "CPI_YOY_gt": 3, "UMCSENT_gt": 80},
+    "stage_5": {"FEDFUNDS_lt": 0.5, "T10Y2Y_lt": 0.5},
+    "stage_1": {"FEDFUNDS_lt": 2.5, "T10Y2Y_gt": 1.0, "CPI_YOY_lt": 3, "UNRATE_gt": 4},
+    "stage_6": {"FEDFUNDS_lt": 1.5, "T10Y2Y_gt": 0.5},
+    "stage_7": {"T10Y2Y_gt": 1.0, "CPI_YOY_gt": 1.5, "UNRATE_lt": 5.5, "UNRATE_gt": 3.5},
+    "stage_4": {"T10Y2Y_lt": 1.0, "UMCSENT_lt": 60}
+  }
+}

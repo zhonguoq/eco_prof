@@ -300,3 +300,9 @@ Phase 3 所有子阶段完成：
 - Phase 2 闭环完成（提取→编码→回测）
 
 ## [2026-04-25 21:40] eco-prof | daily-brief | 滞胀+2P1告警，三层背离持续，伊朗战争主导地缘风险，消费者信心53.3极度低迷
+
+## [2026-05-02 21:30] eco-prof | daily-brief | REGIME 切换：Stagflation → Overheating，Q1 GDP 上修至 2.66% 翻转了象限判断
+- 归档: lab/reports/2026-05-02_eco-brief.md
+- regime: Overheating · debt_stage: 早期健康 / 正常化
+- 关键事件: 4/29 FOMC（维持利率不变）, 4/30 ECB 决议, SP500 收于 7230
+- alerts: yes — 8 条（2 P1 / 6 P2）
