@@ -69,9 +69,13 @@ _SCHEMAS = {
         """CREATE TABLE IF NOT EXISTS financial_statements (
             code TEXT,
             report_date TEXT,
-            statement_type TEXT,
+            fcf REAL,
+            operating_cf REAL,
+            capex REAL,
+            cash REAL,
+            total_liabilities REAL,
             data TEXT,
-            PRIMARY KEY (code, report_date, statement_type)
+            PRIMARY KEY (code, report_date)
         )""",
     ],
 }
@@ -81,6 +85,23 @@ def _init_tables(conn, name):
         conn.execute(stmt)
     conn.commit()
 
+def _migrate_db(conn, name):
+    if name != "micro":
+        return
+    cursor = conn.execute("PRAGMA table_info(financial_statements)")
+    existing = {row["name"] for row in cursor.fetchall()}
+    expected = {"code", "report_date", "fcf", "operating_cf", "capex",
+                "cash", "total_liabilities", "data"}
+    if existing == expected:
+        return
+    # Old schema with statement_type → drop and recreate
+    if "statement_type" in existing:
+        conn.execute("DROP TABLE IF EXISTS financial_statements")
+        for stmt in _SCHEMAS.get(name, []):
+            if "financial_statements" in stmt:
+                conn.execute(stmt)
+        conn.commit()
+
 def get_db(name):
     if name not in _connections:
         db_dir = _resolve_dir()
@@ -89,5 +110,6 @@ def get_db(name):
         conn = sqlite3.connect(path)
         conn.row_factory = sqlite3.Row
         _init_tables(conn, name)
+        _migrate_db(conn, name)
         _connections[name] = conn
     return _connections[name]

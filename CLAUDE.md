@@ -84,7 +84,6 @@ python -m pytest tests/ -q
 1. 提 Issue（类型：bug / feature / iteration）
 2. 标 Label（needs-triage → triage → ready-for-agent → ready-for-human）
 3. TDD 实现：先写测试 → 实现 → lint → 提交 PR
-4. AI 是调度器，不生成计算代码 — 所有算法在 `lab/engine/` 中固化
 
 ### 工程管理参考
 

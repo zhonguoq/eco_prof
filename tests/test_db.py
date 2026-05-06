@@ -52,3 +52,34 @@ def test_get_db_is_idempotent():
     c1 = get_db("macro")
     c2 = get_db("macro")
     assert c1 is c2
+
+
+def test_migrate_old_financial_statements_schema(tmp_path):
+    """Old schema with statement_type should be auto-migrated to new schema."""
+    from lab.engine.db import get_db, _connections
+    import os
+
+    _connections.clear()
+    db_dir = str(tmp_path)
+    os.environ["ECO_DB_DIR"] = db_dir
+
+    old_conn = sqlite3.connect(os.path.join(db_dir, "micro.db"))
+    old_conn.execute("""CREATE TABLE IF NOT EXISTS financial_statements (
+        code TEXT, report_date TEXT, statement_type TEXT, data TEXT,
+        PRIMARY KEY (code, report_date, statement_type)
+    )""")
+    old_conn.commit()
+    old_conn.close()
+
+    _connections.clear()
+    conn = get_db("micro")
+    cols = {r["name"] for r in conn.execute(
+        "PRAGMA table_info(financial_statements)"
+    ).fetchall()}
+
+    assert "fcf" in cols, f"fcf missing, got {cols}"
+    assert "operating_cf" in cols
+    assert "capex" in cols
+    assert "cash" in cols
+    assert "total_liabilities" in cols
+    assert "statement_type" not in cols
