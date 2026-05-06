@@ -21,9 +21,9 @@ _FIXTURES_DIR = Path(__file__).parent.parent / "fixtures"
 _SCRIPTS_DIR = _REPO_ROOT / "lab" / "scripts"
 
 STOCKS = [
-    ("000725.SZ", "CN"),
-    ("00700.HK", "HK"),
-    ("AAPL", "US"),
+    "000725.SZ",
+    "00700.HK",
+    "AAPL",
 ]
 
 
@@ -32,16 +32,14 @@ def seed() -> int:
     _FIXTURES_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=== Seeding fixtures ===")
-    for code, country in STOCKS:
-        print(f"Fetching {code} ({country})...")
+    for code in STOCKS:
+        print(f"Fetching {code}...")
         r = subprocess.run(
             [
                 sys.executable,
                 str(_SCRIPTS_DIR / "fetch_financials.py"),
                 "--code",
                 code,
-                "--country",
-                country,
             ],
             cwd=str(_REPO_ROOT),
         )
