@@ -8,3 +8,8 @@ dist/
 build/
 node_modules/
 eco-prof-app/
+
+# evals harness（ADR-003 决策 15）
+evals/fixtures/*.db
+evals/results/
+.opencode/agent/eval-*.md
