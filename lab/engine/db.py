@@ -3,6 +3,7 @@ import sqlite3
 
 _DB_DIR = None
 
+
 def _resolve_dir():
     if _DB_DIR is not None:
         return _DB_DIR
@@ -10,6 +11,7 @@ def _resolve_dir():
     if env:
         return env
     return os.path.join(os.path.dirname(__file__), "..", "db")
+
 
 _connections = {}
 
@@ -74,26 +76,67 @@ _SCHEMAS = {
             capex REAL,
             cash REAL,
             total_liabilities REAL,
+            revenue REAL,
+            net_income REAL,
+            pretax_income REAL,
+            income_tax REAL,
+            interest_expense REAL,
+            equity REAL,
             data TEXT,
             PRIMARY KEY (code, report_date)
         )""",
+        """CREATE TABLE IF NOT EXISTS scenarios (
+            code TEXT,
+            scenario_name TEXT,
+            g1 REAL,
+            N INTEGER,
+            gt REAL,
+            r REAL,
+            wacc_l2_sanity REAL,
+            base_fcf_method TEXT,
+            updated_at TEXT,
+            PRIMARY KEY (code, scenario_name)
+        )""",
+        """CREATE TABLE IF NOT EXISTS securities (
+            code TEXT PRIMARY KEY,
+            market TEXT,
+            name TEXT,
+            industry TEXT,
+            shares_outstanding REAL,
+            currency TEXT,
+            current_price REAL,
+            updated_at TEXT
+        )""",
     ],
 }
+
 
 def _init_tables(conn, name):
     for stmt in _SCHEMAS.get(name, []):
         conn.execute(stmt)
     conn.commit()
 
+
+_NEW_FINANCIAL_COLS = {
+    "revenue": "REAL",
+    "net_income": "REAL",
+    "pretax_income": "REAL",
+    "income_tax": "REAL",
+    "interest_expense": "REAL",
+    "equity": "REAL",
+}
+
+_NEW_SCENARIO_COLS = {
+    "wacc_l2_sanity": "REAL",
+}
+
+
 def _migrate_db(conn, name):
     if name != "micro":
         return
     cursor = conn.execute("PRAGMA table_info(financial_statements)")
     existing = {row["name"] for row in cursor.fetchall()}
-    expected = {"code", "report_date", "fcf", "operating_cf", "capex",
-                "cash", "total_liabilities", "data"}
-    if existing == expected:
-        return
+
     # Old schema with statement_type → drop and recreate
     if "statement_type" in existing:
         conn.execute("DROP TABLE IF EXISTS financial_statements")
@@ -101,6 +144,23 @@ def _migrate_db(conn, name):
             if "financial_statements" in stmt:
                 conn.execute(stmt)
         conn.commit()
+        return
+
+    # Add any missing Phase-4 columns via ALTER TABLE
+    for col, col_type in _NEW_FINANCIAL_COLS.items():
+        if col not in existing:
+            conn.execute(
+                f"ALTER TABLE financial_statements ADD COLUMN {col} {col_type}"
+            )
+
+    # Add Phase-5 wacc_l2_sanity to scenarios
+    cursor2 = conn.execute("PRAGMA table_info(scenarios)")
+    existing_sc = {row["name"] for row in cursor2.fetchall()}
+    for col, col_type in _NEW_SCENARIO_COLS.items():
+        if col not in existing_sc:
+            conn.execute(f"ALTER TABLE scenarios ADD COLUMN {col} {col_type}")
+    conn.commit()
+
 
 def get_db(name):
     if name not in _connections:
