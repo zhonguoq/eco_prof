@@ -15,7 +15,8 @@ from datetime import datetime
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from lab.engine.db import get_db
-from lab.engine.micro.dcf import dcf_value, _normalize_base
+from lab.engine.micro.dcf import _normalize_base
+from lab.engine.micro.valuation import build_scenario_table
 from lab.chart_lib.micro_charts import (
     valuation_badge,
     scenario_table,
@@ -52,26 +53,23 @@ def _read_fcf_list(conn, code):
     return [r["fcf"] for r in rows], [r["report_date"][:4] for r in rows]
 
 
-def _compute_intrinsic_values(scenarios, fcf_list):
-    """为每个场景计算每股企业价值（EV，不除股数）。"""
-    if len(fcf_list) < 1:
-        for s in scenarios:
-            s["intrinsic_value"] = None
-        return scenarios
+def _merge_per_share_values(conn, code, scenarios):
+    """
+    调用 valuation.build_scenario_table 计算每股内在价值（EV → 扣净债务 → ÷ shares）。
+    将 per_share_value 写回 scenarios 列表的 intrinsic_value 字段。
+    若计算失败，intrinsic_value 为 None 并记录错误原因。
+    """
+    try:
+        per_share_rows = build_scenario_table(conn, code)
+        psv_map = {r["scenario"]: r["per_share_value"] for r in per_share_rows}
+    except Exception as e:
+        psv_map = {}
+        import sys
+
+        print(f"[render_micro] build_scenario_table 失败: {e}", file=sys.stderr)
 
     for s in scenarios:
-        try:
-            ev = dcf_value(
-                fcf_list,
-                growth_rate=s["g1"],
-                growth_years=s["N"],
-                terminal_growth=s["gt"],
-                discount_rate=s["r"],
-                base_fcf_method=s.get("base_fcf_method", "mean3"),
-            )
-            s["intrinsic_value"] = ev
-        except Exception:
-            s["intrinsic_value"] = None
+        s["intrinsic_value"] = psv_map.get(s["scenario_name"])
         s.setdefault("degradation_reason", None)
     return scenarios
 
@@ -165,10 +163,10 @@ def main():
     currency = sec.get("currency", "CNY")
     shares = sec.get("shares_outstanding") or 1
 
-    # ── 读取 / 计算场景 ──
+    # ── 读取 / 计算场景（每股内在价值：EV → 扣净债务 → ÷ shares）──
     scenarios = _read_scenarios(conn, code)
     if scenarios:
-        scenarios = _compute_intrinsic_values(scenarios, fcf_list)
+        scenarios = _merge_per_share_values(conn, code, scenarios)
     else:
         # 无 scenarios 表数据 → 生成最简报告
         scenarios = []

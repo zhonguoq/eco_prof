@@ -103,7 +103,31 @@ python lab/scripts/build_scenarios.py \
 
 ---
 
-### 5. 生成 HTML 报告
+### 5. 每股内在价值对照（dcf.py）
+
+**这是估值计算的真正 CLI 入口。** 调用完整路径：EV → 扣净债务 → ÷ shares_outstanding。
+
+```bash
+python lab/scripts/dcf.py --code <股票代码> --scenario all
+```
+
+输出格式：
+
+```
+场景   每股内在价值    现价   vs现价   安全边际  判读
+bear   ¥XX.XX        ¥X.XX   +XX%     ✓       低估
+base   ¥XX.XX        ¥X.XX   +XX%     ✓       低估
+bull   ¥XX.XX        ¥X.XX   +XX%     ✓       低估
+```
+
+**验证后再继续。** 若任何场景输出 `None` 或报错，请先检查：
+1. `securities` 表有 `shares_outstanding`（跑 `fetch_financials.py`）
+2. `financial_statements` 有 FCF 数据
+3. `scenarios` 表已存在（跑 `build_scenarios.py`）
+
+---
+
+### 6. 生成 HTML 报告
 
 ```bash
 python lab/scripts/render_micro.py --code <股票代码> --dcf --out-dir lab/reports/
@@ -118,7 +142,7 @@ python lab/scripts/render_micro.py --code <股票代码> --dcf --out-dir lab/rep
 
 ---
 
-### 6. 呈现与解读
+### 7. 呈现与解读
 
 从 HTML 报告中提取三场景对照表，以 Markdown 呈现：
 
@@ -138,6 +162,7 @@ python lab/scripts/render_micro.py --code <股票代码> --dcf --out-dir lab/rep
 ---
 
 ### 行业因子排名路径（独立于 DCF）
+
 
 1. 确认行业范围
 2. 调用 `python lab/scripts/factor_score.py --industry <行业名称>`
@@ -165,9 +190,13 @@ python lab/scripts/render_micro.py --code <股票代码> --dcf --out-dir lab/rep
 ## 约束
 
 - DCF 计算由固定 Python 函数执行，AI 不生成算法代码
+- **禁止 LLM 自行推算任何估值数字**（每股内在价值、WACC、β 等）；所有数值必须来自工具输出
+- **任何工具调用失败，立即停止并向用户报告错误，不得用 LLM 估算结果替代**
 - WebSearch 结果**仅用于获取分析师增长率**，不用于 WACC 估算
-- **用户必须在 `build_scenarios.py` 执行前确认参数**，不能自动代入默认值
+- **步骤 1（`estimate_params.py`）、步骤 2（WebSearch 分析师增长率）、步骤 3（用户确认参数）必须按顺序执行，不得跳过**
+- **用户必须在 `build_scenarios.py` 执行前确认参数**；`--analyst-mid` 等值不得由 LLM 假设，必须来自 WebSearch 或用户明确输入
+- **`dcf.py --scenario all` 是每股内在价值的唯一 CLI 入口**（步骤 5），必须在 `render_micro.py` 之前执行并验证输出；每股内在价值必须来自该命令的 stdout，LLM 不得从报告或中间变量中推算
 - L3 WACC 自动计算；Damodaran CSV 每年 1 月手动更新（见 `lab/data/damodaran/README.md`）
 - 若 `interest_expense`/`pretax_income` 缺失，自动降级并在输出中说明原因
-- 首次使用必须运行 `fetch_financials.py` 拉取数据
+- 首次使用必须运行 `fetch_financials.py` 拉取数据（会同时写入 `securities` 表）
 - 不做股票名称→代码查询（用户须直接提供股票代码）

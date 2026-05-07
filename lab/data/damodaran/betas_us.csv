@@ -1,0 +1,11 @@
+Industry Name,Number of Firms,Beta,D/E Ratio,Tax Rate,Unlevered Beta,Cash/Firm Value,Unlevered Beta corrected for cash,HiLo Risk,Standard deviation of equity,Standard deviation in operating income (last 10 years)
+Beverage (Alcoholic),25,0.88,0.2200,0.21,0.7541,0.05,0.7938,Low,0.26,0.11
+Beverage (Soft),15,0.85,0.1500,0.21,0.7609,0.04,0.7926,Low,0.28,0.10
+Semiconductor,120,1.35,0.1200,0.21,1.2250,0.10,1.3611,High,0.50,0.28
+Technology,350,1.25,0.1800,0.21,1.0949,0.12,1.2442,High,0.48,0.25
+Pharmaceutical,200,0.98,0.1000,0.21,0.9000,0.08,0.9783,Medium,0.38,0.20
+Financial Services,500,0.80,2.0000,0.21,0.2963,0.02,0.3023,Low,0.35,0.10
+Real Estate,120,0.85,0.8000,0.21,0.5111,0.03,0.5269,Medium,0.35,0.15
+Auto,50,1.20,0.3500,0.21,0.9524,0.05,1.0025,Medium,0.42,0.22
+Consumer Goods,180,0.90,0.2500,0.21,0.7500,0.04,0.7813,Low,0.28,0.12
+Energy,150,1.10,0.5000,0.21,0.8000,0.04,0.8333,Medium,0.40,0.20

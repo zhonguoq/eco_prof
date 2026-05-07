@@ -2,19 +2,32 @@
 import argparse
 import os
 import sys
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from lab.engine.db import get_db
 from lab.engine.micro.fetcher import fetch_stock_data, fetch_financial_statements
+from lab.engine.micro.yf_fetcher import upsert_securities
 
 
 def main():
     parser = argparse.ArgumentParser(description="Fetch financial data")
     parser.add_argument("--code", help="Stock code")
-    parser.add_argument("--no-prices", action="store_true",
-                        help="Skip price data, fetch financial statements only")
-    parser.add_argument("--no-statements", action="store_true",
-                        help="Skip financial statements, fetch prices only")
+    parser.add_argument(
+        "--no-prices",
+        action="store_true",
+        help="Skip price data, fetch financial statements only",
+    )
+    parser.add_argument(
+        "--no-statements",
+        action="store_true",
+        help="Skip financial statements, fetch prices only",
+    )
+    parser.add_argument(
+        "--no-securities",
+        action="store_true",
+        help="Skip securities metadata (current_price / shares_outstanding)",
+    )
     args = parser.parse_args()
 
     if not args.code:
@@ -30,6 +43,9 @@ def main():
 
     if not args.no_statements:
         n_stmt = fetch_financial_statements(args.code, conn)
+
+    if not args.no_securities:
+        upsert_securities(conn, args.code)
 
     print(f"{args.code}: {n_prices} price rows, {n_stmt} statement rows")
     return 0

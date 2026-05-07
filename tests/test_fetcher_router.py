@@ -104,3 +104,49 @@ def test_dispatcher_calls_fetcher_us_for_us_share(monkeypatch):
     n = router_mod.fetch_financial_statements("AAPL", conn)
     assert called["market"] == "US"
     assert n == 5
+
+
+# ── fetch_stock_data 降级路径 ──────────────────────────────────────────────
+
+
+def test_fetch_stock_data_falls_back_to_yfinance_when_akshare_fails(monkeypatch):
+    """akshare 端点故障时，fetch_stock_data 自动降级 yfinance，数据正常写入 DB。"""
+    import akshare as ak
+    import yfinance as yf
+
+    # ── Simulate akshare endpoint failure ──
+    def akshare_down(*args, **kwargs):
+        raise ConnectionError("Remote end closed connection without response")
+
+    monkeypatch.setattr(ak, "stock_zh_a_hist", akshare_down)
+
+    # ── Provide deterministic yfinance stub ──
+    mock_df = pd.DataFrame(
+        {
+            "Open": [4.1],
+            "Close": [4.2],
+            "High": [4.3],
+            "Low": [3.9],
+            "Volume": [1_000_000],
+        },
+        index=pd.DatetimeIndex(["2024-12-31"], tz="Asia/Shanghai"),
+    )
+
+    class _MockTicker:
+        def history(self, period="max"):
+            return mock_df
+
+    monkeypatch.setattr(yf, "Ticker", lambda code: _MockTicker())
+
+    from lab.engine.micro.fetcher import fetch_stock_data
+    from lab.engine.db import get_db
+
+    conn = get_db("micro")
+    n = fetch_stock_data("000725.SZ", conn)
+
+    assert n == 1, "应写入 1 行（来自 yfinance stub）"
+    row = conn.execute(
+        "SELECT close FROM stock_prices WHERE code='000725.SZ'"
+    ).fetchone()
+    assert row is not None
+    assert row["close"] == pytest.approx(4.2)

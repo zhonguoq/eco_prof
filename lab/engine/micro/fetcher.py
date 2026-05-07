@@ -103,11 +103,25 @@ def fetch_stock_data(code, conn, market=None, mock=None):
         data = mock
     elif market == "A":
         import akshare as ak
+        import yfinance as yf
 
-        df = ak.stock_zh_a_hist(
-            symbol=code.replace(".SH", "").replace(".SZ", ""), adjust="qfq"
-        )
-        data = df.set_index("日期")
+        try:
+            df = ak.stock_zh_a_hist(
+                symbol=code.replace(".SH", "").replace(".SZ", ""), adjust="qfq"
+            )
+            data = df.set_index("日期")
+        except Exception as ak_err:
+            # akshare endpoint unavailable — fall back to yfinance
+            # (.SH → .SS for Shanghai Exchange, .SZ unchanged)
+            yf_code = re.sub(r"\.SH$", ".SS", code, flags=re.IGNORECASE)
+            import sys
+
+            print(
+                f"[fetch_stock_data] akshare failed ({ak_err.__class__.__name__}), "
+                f"falling back to yfinance ({yf_code})",
+                file=sys.stderr,
+            )
+            data = yf.Ticker(yf_code).history(period="max")
     else:
         import yfinance as yf
 

@@ -197,7 +197,7 @@ def test_render_micro_generates_html(tmp_path):
         """INSERT OR REPLACE INTO securities
            (code, market, name, industry, shares_outstanding, currency, current_price, updated_at)
            VALUES (?,?,?,?,?,?,?,?)""",
-        ("000725.SZ", "CN", "BOE", "半导体", 100000, "CNY", 5.0, "2024-01-01"),
+        ("000725.SZ", "CN", "BOE", "半导体", 1000, "CNY", 5.0, "2024-01-01"),
     )
     conn.execute(
         """INSERT OR REPLACE INTO scenarios
@@ -241,3 +241,76 @@ def test_render_micro_generates_html(tmp_path):
 
     html_files = [f for f in os.listdir(out_dir) if f.endswith(".html")]
     assert len(html_files) >= 1
+
+
+def test_render_micro_html_shows_per_share_not_ev(tmp_path):
+    """
+    render_micro.py 的三场景表应展示每股内在价值（per_share_value），
+    不应展示原始企业价值（EV）。
+    shares_outstanding=1000, FCF base≈1100 → EV≈20533 → per_share≈20.5
+    HTML 中应出现 "20" 量级数字，而不应直接出现 "20533"。
+    """
+    import subprocess
+
+    env = {**os.environ, "ECO_DB_DIR": str(tmp_path)}
+    os.environ["ECO_DB_DIR"] = str(tmp_path)
+    from lab.engine.db import get_db, _connections
+
+    _connections.clear()
+    conn = get_db("micro")
+
+    # 财报数据
+    for i, year in enumerate(["2022-12-31", "2023-12-31", "2024-12-31"]):
+        conn.execute(
+            """INSERT OR REPLACE INTO financial_statements
+               (code, report_date, fcf, pretax_income, income_tax,
+                interest_expense, total_liabilities)
+               VALUES (?,?,?,?,?,?,?)""",
+            ("000725.SZ", year, 1000 * (1 + i * 0.1), 2000, 500, 100, 5000),
+        )
+    # shares=1000 → EV≈20533 → per_share≈20.5（可在 HTML 中看到两位数）
+    conn.execute(
+        """INSERT OR REPLACE INTO securities
+           (code, market, name, industry, shares_outstanding, currency, current_price, updated_at)
+           VALUES (?,?,?,?,?,?,?,?)""",
+        ("000725.SZ", "CN", "BOE", "半导体", 1000, "CNY", 5.0, "2024-01-01"),
+    )
+    conn.execute(
+        """INSERT OR REPLACE INTO scenarios
+           (code, scenario_name, g1, N, gt, r, wacc_l2_sanity, base_fcf_method, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        ("000725.SZ", "base", 0.10, 5, 0.025, 0.10, 0.10, "mean3", "2024-01-01"),
+    )
+    conn.commit()
+    _connections.clear()
+
+    out_dir = str(tmp_path / "reports2")
+    os.makedirs(out_dir, exist_ok=True)
+
+    r = subprocess.run(
+        [
+            "python",
+            "lab/scripts/render_micro.py",
+            "--code",
+            "000725.SZ",
+            "--dcf",
+            "--out-dir",
+            out_dir,
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    assert r.returncode == 0, r.stderr
+
+    html_files = [f for f in os.listdir(out_dir) if f.endswith(".html")]
+    assert html_files, "未生成 HTML"
+
+    with open(os.path.join(out_dir, html_files[0]), encoding="utf-8") as f:
+        html = f.read()
+
+    # 每股内在价值应为两位数量级（~20），不应直接展示原始 EV（~20533）
+    # 验证 "20533" 这个原始 EV 数字不出现在场景表中
+    assert "20533" not in html, "HTML 不应包含原始 EV 值 20533（应为每股价值）"
+    # 验证确实包含了 "20"（每股价值约 20.x，格式化后显示为整数）
+    assert "20" in html, "HTML 中应包含两位数的每股内在价值"
